@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require("dotenv").config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -13,15 +14,18 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
+const RINKEBY_ALCHEMY_URL = process.env.RINKEBY_ALCHEMY_URL;
+const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY;
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.1",
-  networks:{
+  solidity: "0.8.4",
+  networks: {
     rinkeby: {
-      url:"https://rinkeby.infura.io/v3/d9f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8",
-      accounts: ["TEST"]
-      }
-    }
-  };
+      url: RINKEBY_ALCHEMY_URL,
+      accounts: [RINKEBY_PRIVATE_KEY],
+    },
+  },
+};
