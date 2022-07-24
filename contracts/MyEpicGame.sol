@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.5;
 
 // NFT contract to inherit from.
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -24,39 +24,34 @@ contract MyEpicGame is ERC721 {
         uint hp;
         uint maxHp;
         uint attackDamage;
-        uint strength;
         uint dexterity;
-        uint intelligence;
-        uint vitality;
         uint luck;
     }
+    struct BossAttributes {
+        uint bossIndex;
+        string name;
+        string imageURI;
+        uint hp;
+        uint maxHp;
+        uint attackDamage;
+        uint bossExp;
+    }
 
-    // The tokenId is the NFTs unique identifier, it's just a number that goes
-    // 0, 1, 2, 3, etc.
+    // Use counter to increase the index of the next NFT
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
     CharacterAttributes[] defaultCharacters;
+    BossAttributes[] defaultBosses;
 
     address owner;
     uint256 maxLevel;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
+    mapping(uint256 => BossAttributes) public bossAttributes;
 
-    struct BigBoss {
-        string name;
-        string imageURI;
-        uint hp;
-        uint maxHp;
-        uint attackDamage;
-        uint exp;
-    }
-
-    BigBoss public bigBoss;
-
-    // A mapping from an address => the NFTs tokenId. Gives me an ez way
-    // to store the owner of the NFT and reference it later.
+    // A mapping from an address => the NFTs tokenId
     mapping(address => uint256) public nftHolders;
 
     event CharacterNFTMinted(
@@ -69,50 +64,60 @@ contract MyEpicGame is ERC721 {
         uint256 newBossHp,
         uint256 newCharacterHp
     );
-
     event BossKilled(address sender);
 
-    constructor(
+    constructor() ERC721("Heroes", "HERO") {
+        owner = msg.sender;
+        maxLevel = 20;
+        // I increment _tokenIds here so that my first NFT has an ID of 1.
+        _tokenIds.increment();
+    }
+
+    function createBosses(
+        string[] memory bossName,
+        string[] memory bossImageURI,
+        uint[] memory bossHp,
+        uint[] memory bossAttackDamage,
+        uint[] memory bossExp
+    ) public {
+        uint256 lastBossIndex = defaultBosses.length;
+        for (uint i = 0; i < bossName.length; i += 1) {
+            defaultBosses.push(
+                BossAttributes({
+                    bossIndex: i + lastBossIndex,
+                    name: bossName[i],
+                    imageURI: bossImageURI[i],
+                    hp: bossHp[i],
+                    maxHp: bossHp[i],
+                    attackDamage: bossAttackDamage[i],
+                    bossExp: bossExp[i]
+                })
+            );
+
+            BossAttributes memory b = defaultBosses[i];
+
+            console.log(
+                "Done initializing %s w/ HP %s, img %s",
+                b.name,
+                b.hp,
+                b.imageURI
+            );
+        }
+    }
+
+    function createCharacters(
         string[] memory characterNames,
         string[] memory characterImageURIs,
         uint[] memory characterHp,
         uint[] memory characterAttackDmg,
-        uint[] memory characterStrength,
         uint[] memory characterDexterity,
-        uint[] memory characterIntelligence,
-        uint[] memory characterVitality,
-        uint[] memory characterLuck,
-        string memory bossName,
-        string memory bossImageURI,
-        uint bossHp,
-        uint bossAttackDamage,
-        uint bossExp
-    )
-        // Below, you can also see I added some special identifier symbols for our NFT.
-        // This is the name and symbol for our token, ex Ethereum and ETH. I just call mine
-        // Heroes and HERO. Remember, an NFT is just a token!
-        ERC721("Heroes", "HERO")
-    {
-        bigBoss = BigBoss({
-            name: bossName,
-            imageURI: bossImageURI,
-            hp: bossHp,
-            maxHp: bossHp,
-            attackDamage: bossAttackDamage,
-            exp: bossExp
-        });
-
-        console.log(
-            "Done initializing boss %s w/ HP %s, img %s",
-            bigBoss.name,
-            bigBoss.hp,
-            bigBoss.imageURI
-        );
-
+        uint[] memory characterLuck
+    ) public {
+        uint256 lastIndex = defaultCharacters.length;
         for (uint i = 0; i < characterNames.length; i += 1) {
             defaultCharacters.push(
                 CharacterAttributes({
-                    characterIndex: i,
+                    characterIndex: i + lastIndex,
                     name: characterNames[i],
                     imageURI: characterImageURIs[i],
                     level: 1,
@@ -121,30 +126,21 @@ contract MyEpicGame is ERC721 {
                     hp: characterHp[i],
                     maxHp: characterHp[i],
                     attackDamage: characterAttackDmg[i],
-                    strength: characterStrength[i],
                     dexterity: characterDexterity[i],
-                    intelligence: characterIntelligence[i],
-                    vitality: characterVitality[i],
                     luck: characterLuck[i]
                 })
             );
 
-            CharacterAttributes memory c = defaultCharacters[i];
+            CharacterAttributes memory c = defaultCharacters[i + lastIndex];
 
             // Hardhat's use of console.log() allows up to 4 parameters in any order of following types: uint, string, bool, address
             console.log(
-                "Done initializing %s w/ HP %s, img %s",
+                "Done initializing %s w/ HP %s and index %s",
                 c.name,
                 c.hp,
-                c.imageURI
+                c.characterIndex
             );
         }
-
-        owner = msg.sender;
-        maxLevel = 20;
-        // I increment _tokenIds here so that my first NFT has an ID of 1.
-        // More on this in the lesson!
-        _tokenIds.increment();
     }
 
     // Users would be able to hit this function and get their NFT based on the
@@ -168,10 +164,7 @@ contract MyEpicGame is ERC721 {
             hp: defaultCharacters[_characterIndex].hp,
             maxHp: defaultCharacters[_characterIndex].maxHp,
             attackDamage: defaultCharacters[_characterIndex].attackDamage,
-            strength: defaultCharacters[_characterIndex].strength,
             dexterity: defaultCharacters[_characterIndex].dexterity,
-            intelligence: defaultCharacters[_characterIndex].intelligence,
-            vitality: defaultCharacters[_characterIndex].vitality,
             luck: defaultCharacters[_characterIndex].luck
         });
 
@@ -230,17 +223,19 @@ contract MyEpicGame is ERC721 {
         return output;
     }
 
-    function specialAttackBoss() public {
+    function attackBoss(uint256 bossIndex) public {
         uint nftTokenIdOfPlayer = nftHolders[msg.sender];
         CharacterAttributes storage player = nftHolderAttributes[
             nftTokenIdOfPlayer
         ];
+        BossAttributes storage bigBoss = defaultBosses[bossIndex];
         console.log(
             "\nPlayer w/ character %s about to attack. Has %s HP and %s AD",
             player.name,
             player.hp,
             player.attackDamage
         );
+
         console.log(
             "Boss %s has %s HP and %s AD",
             bigBoss.name,
@@ -275,57 +270,7 @@ contract MyEpicGame is ERC721 {
 
         if (bigBoss.hp == 0) {
             console.log("Boss is dead!");
-            addExp(bigBoss.exp);
-            emit BossKilled(msg.sender);
-        }
-    }
-
-    function attackBoss() public {
-        uint nftTokenIdOfPlayer = nftHolders[msg.sender];
-        CharacterAttributes storage player = nftHolderAttributes[
-            nftTokenIdOfPlayer
-        ];
-        console.log(
-            "\nPlayer w/ character %s about to attack. Has %s HP and %s AD",
-            player.name,
-            player.hp,
-            player.attackDamage
-        );
-        console.log(
-            "Boss %s has %s HP and %s AD",
-            bigBoss.name,
-            bigBoss.hp,
-            bigBoss.attackDamage
-        );
-
-        // We need to make sure that the player has enough HP to attack.
-        if (player.hp < 0) revert MyEpicGame__CharacterHPEqualsToZero();
-
-        // We need to make sure that the boss has enough HP to attack.
-        if (bigBoss.hp < 0) revert MyEpicGame__BossHPEqualsToZero();
-
-        // Allow player to attack boss.
-        if (bigBoss.hp < player.attackDamage) {
-            bigBoss.hp = 0;
-        } else {
-            bigBoss.hp = bigBoss.hp - player.attackDamage;
-        }
-
-        // Allow boss to attack player.
-        if (player.hp < bigBoss.attackDamage) {
-            player.hp = 0;
-        } else {
-            player.hp = player.hp - bigBoss.attackDamage;
-        }
-
-        // Console for ease.
-        emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
-        console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
-        console.log("Boss attacked player. New player hp: %s\n", player.hp);
-
-        if (bigBoss.hp == 0) {
-            console.log("Boss is dead!");
-            addExp(bigBoss.exp);
+            addExp(bigBoss.bossExp);
             emit BossKilled(msg.sender);
         }
     }
@@ -369,6 +314,15 @@ contract MyEpicGame is ERC721 {
         }
     }
 
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    function incrementMaxLevel(uint256 newMaxLevel) public onlyOwner {
+        maxLevel = newMaxLevel;
+    }
+
     function getAllDefaultCharacters()
         public
         view
@@ -377,16 +331,19 @@ contract MyEpicGame is ERC721 {
         return defaultCharacters;
     }
 
-    function getBigBoss() public view returns (BigBoss memory) {
-        return bigBoss;
+    function getBossAttributes(uint256 bossIndex)
+        public
+        view
+        returns (BossAttributes memory)
+    {
+        return defaultBosses[bossIndex];
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    function incrementMaxLevel(uint256 newMaxLevel) public onlyOwner {
-        maxLevel = newMaxLevel;
+    function getCharacterAttributes(uint256 characterIndex)
+        public
+        view
+        returns (CharacterAttributes memory)
+    {
+        return defaultCharacters[characterIndex];
     }
 }

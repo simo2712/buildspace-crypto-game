@@ -21,11 +21,24 @@ const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY;
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.4",
+  solidity: "0.8.13",
   networks: {
     rinkeby: {
       url: RINKEBY_ALCHEMY_URL,
       accounts: [RINKEBY_PRIVATE_KEY],
+    },
+  },
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 2000,
+      details: {
+        yul: true,
+        yulDetails: {
+          stackAllocation: true,
+          optimizerSteps: "dhfoDgvulfnTUtnIf",
+        },
+      },
     },
   },
 };
