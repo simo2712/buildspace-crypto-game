@@ -18,6 +18,10 @@ contract MyEpicGame is ERC721 {
         uint characterIndex;
         string name;
         string imageURI;
+        uint level;
+        uint maxLevel;
+        uint exp;
+        uint maxExp;
         uint hp;
         uint maxHp;
         uint attackDamage;
@@ -39,6 +43,7 @@ contract MyEpicGame is ERC721 {
         uint hp;
         uint maxHp;
         uint attackDamage;
+        uint exp;
     }
 
     BigBoss public bigBoss;
@@ -58,6 +63,8 @@ contract MyEpicGame is ERC721 {
         uint256 newCharacterHp
     );
 
+    event BossKilled(address sender);
+
     constructor(
         string[] memory characterNames,
         string[] memory characterImageURIs,
@@ -66,7 +73,8 @@ contract MyEpicGame is ERC721 {
         string memory bossName,
         string memory bossImageURI,
         uint bossHp,
-        uint bossAttackDamage
+        uint bossAttackDamage,
+        uint bossExp
     )
         // Below, you can also see I added some special identifier symbols for our NFT.
         // This is the name and symbol for our token, ex Ethereum and ETH. I just call mine
@@ -78,7 +86,8 @@ contract MyEpicGame is ERC721 {
             imageURI: bossImageURI,
             hp: bossHp,
             maxHp: bossHp,
-            attackDamage: bossAttackDamage
+            attackDamage: bossAttackDamage,
+            exp: bossExp
         });
 
         console.log(
@@ -94,6 +103,10 @@ contract MyEpicGame is ERC721 {
                     characterIndex: i,
                     name: characterNames[i],
                     imageURI: characterImageURIs[i],
+                    level: 1,
+                    maxLevel: 20,
+                    exp: 0,
+                    maxExp: 1000,
                     hp: characterHp[i],
                     maxHp: characterHp[i],
                     attackDamage: characterAttackDmg[i]
@@ -131,6 +144,10 @@ contract MyEpicGame is ERC721 {
             characterIndex: _characterIndex,
             name: defaultCharacters[_characterIndex].name,
             imageURI: defaultCharacters[_characterIndex].imageURI,
+            level: defaultCharacters[_characterIndex].level,
+            maxLevel: defaultCharacters[_characterIndex].maxLevel,
+            exp: defaultCharacters[_characterIndex].exp,
+            maxExp: defaultCharacters[_characterIndex].maxExp,
             hp: defaultCharacters[_characterIndex].hp,
             maxHp: defaultCharacters[_characterIndex].maxHp,
             attackDamage: defaultCharacters[_characterIndex].attackDamage
@@ -233,6 +250,39 @@ contract MyEpicGame is ERC721 {
         emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
         console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
         console.log("Boss attacked player. New player hp: %s\n", player.hp);
+
+        if (bigBoss.hp == 0) {
+            console.log("Boss is dead!");
+            addExp(bigBoss.exp);
+            emit BossKilled(msg.sender);
+        }
+    }
+
+    function addExp(uint expAdded) private {
+        uint nftTokenIdOfPlayer = nftHolders[msg.sender];
+        CharacterAttributes storage player = nftHolderAttributes[
+            nftTokenIdOfPlayer
+        ];
+        player.exp += expAdded;
+        while (player.exp >= player.maxExp) {
+            if (
+                player.level == player.maxLevel && player.exp >= player.maxExp
+            ) {
+                player.exp = player.maxExp;
+                console.log("Player is max level!");
+                break;
+            }
+            player.exp -= player.maxExp;
+            player.level += 1;
+            player.maxExp = player.maxExp * 2;
+            player.hp = player.maxHp;
+        }
+
+        console.log("New level: %s", player.level);
+        console.log("Boss xp added: %s", expAdded);
+        console.log("New exp: %s", player.exp);
+        console.log("New maxExp: %s", player.maxExp);
+        console.log("New hp: %s", player.hp);
     }
 
     function checkIfUserHasNFT()
