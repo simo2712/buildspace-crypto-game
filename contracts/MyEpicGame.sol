@@ -19,12 +19,16 @@ contract MyEpicGame is ERC721 {
         string name;
         string imageURI;
         uint level;
-        uint maxLevel;
         uint exp;
         uint maxExp;
         uint hp;
         uint maxHp;
         uint attackDamage;
+        uint strength;
+        uint dexterity;
+        uint intelligence;
+        uint vitality;
+        uint luck;
     }
 
     // The tokenId is the NFTs unique identifier, it's just a number that goes
@@ -33,6 +37,9 @@ contract MyEpicGame is ERC721 {
     Counters.Counter private _tokenIds;
 
     CharacterAttributes[] defaultCharacters;
+
+    address owner;
+    uint256 maxLevel;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
@@ -70,6 +77,11 @@ contract MyEpicGame is ERC721 {
         string[] memory characterImageURIs,
         uint[] memory characterHp,
         uint[] memory characterAttackDmg,
+        uint[] memory characterStrength,
+        uint[] memory characterDexterity,
+        uint[] memory characterIntelligence,
+        uint[] memory characterVitality,
+        uint[] memory characterLuck,
         string memory bossName,
         string memory bossImageURI,
         uint bossHp,
@@ -104,12 +116,16 @@ contract MyEpicGame is ERC721 {
                     name: characterNames[i],
                     imageURI: characterImageURIs[i],
                     level: 1,
-                    maxLevel: 20,
                     exp: 0,
                     maxExp: 1000,
                     hp: characterHp[i],
                     maxHp: characterHp[i],
-                    attackDamage: characterAttackDmg[i]
+                    attackDamage: characterAttackDmg[i],
+                    strength: characterStrength[i],
+                    dexterity: characterDexterity[i],
+                    intelligence: characterIntelligence[i],
+                    vitality: characterVitality[i],
+                    luck: characterLuck[i]
                 })
             );
 
@@ -124,6 +140,8 @@ contract MyEpicGame is ERC721 {
             );
         }
 
+        owner = msg.sender;
+        maxLevel = 20;
         // I increment _tokenIds here so that my first NFT has an ID of 1.
         // More on this in the lesson!
         _tokenIds.increment();
@@ -145,12 +163,16 @@ contract MyEpicGame is ERC721 {
             name: defaultCharacters[_characterIndex].name,
             imageURI: defaultCharacters[_characterIndex].imageURI,
             level: defaultCharacters[_characterIndex].level,
-            maxLevel: defaultCharacters[_characterIndex].maxLevel,
             exp: defaultCharacters[_characterIndex].exp,
             maxExp: defaultCharacters[_characterIndex].maxExp,
             hp: defaultCharacters[_characterIndex].hp,
             maxHp: defaultCharacters[_characterIndex].maxHp,
-            attackDamage: defaultCharacters[_characterIndex].attackDamage
+            attackDamage: defaultCharacters[_characterIndex].attackDamage,
+            strength: defaultCharacters[_characterIndex].strength,
+            dexterity: defaultCharacters[_characterIndex].dexterity,
+            intelligence: defaultCharacters[_characterIndex].intelligence,
+            vitality: defaultCharacters[_characterIndex].vitality,
+            luck: defaultCharacters[_characterIndex].luck
         });
 
         console.log(
@@ -206,6 +228,56 @@ contract MyEpicGame is ERC721 {
         );
 
         return output;
+    }
+
+    function specialAttackBoss() public {
+        uint nftTokenIdOfPlayer = nftHolders[msg.sender];
+        CharacterAttributes storage player = nftHolderAttributes[
+            nftTokenIdOfPlayer
+        ];
+        console.log(
+            "\nPlayer w/ character %s about to attack. Has %s HP and %s AD",
+            player.name,
+            player.hp,
+            player.attackDamage
+        );
+        console.log(
+            "Boss %s has %s HP and %s AD",
+            bigBoss.name,
+            bigBoss.hp,
+            bigBoss.attackDamage
+        );
+
+        // We need to make sure that the player has enough HP to attack.
+        if (player.hp < 0) revert MyEpicGame__CharacterHPEqualsToZero();
+
+        // We need to make sure that the boss has enough HP to attack.
+        if (bigBoss.hp < 0) revert MyEpicGame__BossHPEqualsToZero();
+
+        // Allow player to attack boss.
+        if (bigBoss.hp < player.attackDamage) {
+            bigBoss.hp = 0;
+        } else {
+            bigBoss.hp = bigBoss.hp - player.attackDamage;
+        }
+
+        // Allow boss to attack player.
+        if (player.hp < bigBoss.attackDamage) {
+            player.hp = 0;
+        } else {
+            player.hp = player.hp - bigBoss.attackDamage;
+        }
+
+        // Console for ease.
+        emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
+        console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
+        console.log("Boss attacked player. New player hp: %s\n", player.hp);
+
+        if (bigBoss.hp == 0) {
+            console.log("Boss is dead!");
+            addExp(bigBoss.exp);
+            emit BossKilled(msg.sender);
+        }
     }
 
     function attackBoss() public {
@@ -265,9 +337,7 @@ contract MyEpicGame is ERC721 {
         ];
         player.exp += expAdded;
         while (player.exp >= player.maxExp) {
-            if (
-                player.level == player.maxLevel && player.exp >= player.maxExp
-            ) {
+            if (player.level == maxLevel && player.exp >= player.maxExp) {
                 player.exp = player.maxExp;
                 console.log("Player is max level!");
                 break;
@@ -309,5 +379,14 @@ contract MyEpicGame is ERC721 {
 
     function getBigBoss() public view returns (BigBoss memory) {
         return bigBoss;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    function incrementMaxLevel(uint256 newMaxLevel) public onlyOwner {
+        maxLevel = newMaxLevel;
     }
 }

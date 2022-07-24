@@ -7,8 +7,13 @@ const main = async () => {
       "https://tmssl.akamaized.net/images/foto/galerie/romelu-lukaku-inter-mailand-1566880317-25036.jpg?lm=1566880330",
       "https://www.raisport.rai.it/dl/img/2020/01/1600x900_1580333075135.barellaesulta.jpg",
     ],
-    [300, 200, 250], // HP values
-    [70, 100, 75], // Attack damage values
+    [250, 300, 200], // HP values
+    [100, 100, 75], // Attack damage values
+    [8, 9, 5], // Strenght values
+    [6, 3, 7], // Dexterity values
+    [4, 5, 6], // Intelligence values
+    [7, 8, 7], // Vitality values
+    [6, 6, 6], // Luck values
     "Padre Pioli", // Boss name
     "https://papavanbasten.com/wp-content/uploads/2019/12/padre-pioli.jpg", // Boss image
     20, // Boss hp
