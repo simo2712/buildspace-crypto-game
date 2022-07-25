@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 // Helper functions OpenZeppelin provides.
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "hardhat/console.sol";
 import "./libraries/Base64.sol";
 
@@ -13,7 +15,8 @@ error MyEpicGame__CharacterHPEqualsToZero();
 error MyEpicGame__BossHPEqualsToZero();
 
 // Our contract inherits from ERC721, which is the standard NFT contract!
-contract MyEpicGame is ERC721 {
+contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
+    /* State Variables */
     struct CharacterAttributes {
         uint characterIndex;
         string name;
@@ -44,8 +47,14 @@ contract MyEpicGame is ERC721 {
     CharacterAttributes[] defaultCharacters;
     BossAttributes[] defaultBosses;
 
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     address owner;
-    uint256 maxLevel;
+    uint256 s_maxLevel;
+    bytes32 private immutable i_gasLane;
+    uint64 private immutable i_subscriptionid;
+    uint32 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint32 private constant NUM_WORDS = 1;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
@@ -66,9 +75,18 @@ contract MyEpicGame is ERC721 {
     );
     event BossKilled(address sender);
 
-    constructor() ERC721("Heroes", "HERO") {
+    constructor(address vrfCoordinatorV2, // contract
+        uint256 entranceFee,
+        bytes32 gasLane,
+        uint64 subscriptionid,
+        uint32 callbackGasLimit
+    ) ERC721("Heroes", "HERO") VRFConsumerBaseV2(vrfCoordinatorV2) {
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_gasLane = gasLane;
+        i_subscriptionid = subscriptionid;
+        i_callbackGasLimit = callbackGasLimit;
         owner = msg.sender;
-        maxLevel = 20;
+        s_maxLevel = 20;
         // I increment _tokenIds here so that my first NFT has an ID of 1.
         _tokenIds.increment();
     }
