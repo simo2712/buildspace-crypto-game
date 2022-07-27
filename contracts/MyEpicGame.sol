@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.5;
+pragma solidity ^0.8.8;
 
 // NFT contract to inherit from.
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 // Helper functions OpenZeppelin provides.
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "hardhat/console.sol";
 import "./libraries/Base64.sol";
+import "./GameEngine.sol";
 
 error MyEpicGame__CharacterHPEqualsToZero();
 error MyEpicGame__BossHPEqualsToZero();
 
-
 // Our contract inherits from ERC721, which is the standard NFT contract!
-contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
+contract MyEpicGame is ERC721 {
     /* State Variables */
     struct CharacterAttributes {
         uint characterIndex;
@@ -48,23 +46,12 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
     CharacterAttributes[] defaultCharacters;
     BossAttributes[] defaultBosses;
 
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
     address owner;
     uint256 s_maxLevel;
-    bytes32 private immutable i_gasLane;
-    uint64 private immutable i_subscriptionid;
-    uint32 private immutable i_callbackGasLimit;
-    uint16 private constant REQUEST_CONFIRMATIONS = 3;
-    uint32 private constant NUM_WORDS = 1;
-    uint32 private constant ATTACK_IN_PROGRESS = 0;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
     mapping(uint256 => BossAttributes) public bossAttributes;
-
-    // A Mapping for the check of critical attacks or dodge
-    mapping(uint256 => address) public s_attackers;
-    mapping(address => uint256) public s_results;
 
     // A mapping from an address => the NFTs tokenId
     mapping(address => uint256) public nftHolders;
@@ -80,25 +67,10 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         uint256 newCharacterHp
     );
     event BossKilled(address sender);
-    event RequestedRandomNumber(uint256 requestId, address sender);
-    event RandomNumberCreated(
-        address sender,
-        uint256 randomNumber
-    );
 
-    constructor(address vrfCoordinatorV2, // contract
-        uint256 entranceFee,
-        bytes32 gasLane,
-        uint64 subscriptionid,
-        uint32 callbackGasLimit
-    ) ERC721("Heroes", "HERO") VRFConsumerBaseV2(vrfCoordinatorV2) {
-        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
-        i_gasLane = gasLane;
-        i_subscriptionid = subscriptionid;
-        i_callbackGasLimit = callbackGasLimit;
+    constructor() ERC721("Heroes", "HERO") {
         owner = msg.sender;
         s_maxLevel = 20;
-        // I increment _tokenIds here so that my first NFT has an ID of 1.
         _tokenIds.increment();
     }
 
@@ -113,7 +85,7 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         uint[] memory bossHp,
         uint[] memory bossAttackDamage,
         uint[] memory bossExp
-    ) public onlyOwner{
+    ) public onlyOwner {
         uint256 lastBossIndex = defaultBosses.length;
         for (uint i = 0; i < bossName.length; i += 1) {
             defaultBosses.push(
@@ -139,14 +111,14 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         }
     }
 
-    function createCharacters onlyOwner(
+    function createCharacters(
         string[] memory characterNames,
         string[] memory characterImageURIs,
         uint[] memory characterHp,
         uint[] memory characterAttackDmg,
         uint[] memory characterDexterity,
         uint[] memory characterLuck
-    ) public {
+    ) public onlyOwner {
         uint256 lastIndex = defaultCharacters.length;
         for (uint i = 0; i < characterNames.length; i += 1) {
             defaultCharacters.push(
@@ -202,12 +174,6 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
             luck: defaultCharacters[_characterIndex].luck
         });
 
-        console.log(
-            "Minted NFT w/ tokenId %s and characterIndex %s",
-            newItemId,
-            _characterIndex
-        );
-
         // Keep an easy way to see who owns what NFT.
         nftHolders[msg.sender] = newItemId;
 
@@ -250,63 +216,15 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
             )
         );
 
-        string memory output = string(
-            abi.encodePacked("data:application/json;base64,", json)
-        );
-
-        return output;
+        return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
-    function requestRandonNumber() internal {
-        uint256 requestId = i_vrfCoordinator.requestRandoWords(
-            i_gasLane,
-            i_subscriptionid,
-            REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
-            NUM_WORDS
-        );
-
-        s_attackers[requestId] = msg.sender;
-        s_results[msg.sender] = ATTACK_IN_PROGRESS;
-        emit RequestedRandomNumber(requestId, msg.sender);
-    }
-
-    function fulfillRandomWords(
-        uint256 requestId,
-        uint256[] memory randomWords
-    ) internal override {
-        uint8 value = (randomWords[0] % 100) + 1;
-        s_results[s_attackers[requestId]] = value;
-        emit RandomNumberCreated(requestId, value);
-    }
-
-    function dodgeOrCritical(uint256 id, uint256 playerParameter) internal returns (bool) {
-        if (id <= playerParameter) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    function attackBoss(uint256 bossIndex) public {
+    function attackBoss(GameEngine _contract, uint256 bossIndex) public {
         uint nftTokenIdOfPlayer = nftHolders[msg.sender];
         CharacterAttributes storage player = nftHolderAttributes[
             nftTokenIdOfPlayer
         ];
         BossAttributes storage bigBoss = defaultBosses[bossIndex];
-        console.log(
-            "\nPlayer w/ character %s about to attack. Has %s HP and %s AD",
-            player.name,
-            player.hp,
-            player.attackDamage
-        );
-
-        console.log(
-            "Boss %s has %s HP and %s AD",
-            bigBoss.name,
-            bigBoss.hp,
-            bigBoss.attackDamage
-        );
 
         // We need to make sure that the player has enough HP to attack.
         if (player.hp < 0) revert MyEpicGame__CharacterHPEqualsToZero();
@@ -315,32 +233,31 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         if (bigBoss.hp < 0) revert MyEpicGame__BossHPEqualsToZero();
 
         // Allow player to attack boss.
-        requestRandonNumber();
+        _contract.requestRandonNumber();
         if (bigBoss.hp < player.attackDamage) {
             bigBoss.hp = 0;
         } else {
-            if (dodgeOrCritical(s_results[msg.sender], player.luck)) {
+            if (_contract.dodgeOrCritical(msg.sender, player.luck)) {
                 bigBoss.hp -= player.attackDamage * 2;
             }
             bigBoss.hp -= player.attackDamage;
         }
 
         // Allow boss to attack player.
-        requestRandonNumber();
-        if (dodgeOrCritical(s_results[msg.sender], player.dexterity)) {
+        _contract.requestRandonNumber();
+        if (_contract.dodgeOrCritical(msg.sender, player.dexterity)) {
             console.log("Attack dodged!");
         } else {
             if (player.hp < bigBoss.attackDamage) {
-            player.hp = 0;
+                player.hp = 0;
             } else {
                 player.hp = player.hp - bigBoss.attackDamage;
             }
         }
-        
 
         // Console for ease.
         emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
-        console.log("Player attacked boss. New boss hp: %s", bigBoss.hp);
+        console.log("Player attacked boss. New boss hp: %s.", bigBoss.hp);
         console.log("Boss attacked player. New player hp: %s\n", player.hp);
 
         if (bigBoss.hp == 0) {
@@ -357,7 +274,7 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         ];
         player.exp += expAdded;
         while (player.exp >= player.maxExp) {
-            if (player.level == maxLevel && player.exp >= player.maxExp) {
+            if (player.level == s_maxLevel && player.exp >= player.maxExp) {
                 player.exp = player.maxExp;
                 console.log("Player is max level!");
                 break;
@@ -372,7 +289,10 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         console.log("Boss xp added: %s", expAdded);
         console.log("New exp: %s", player.exp);
         console.log("New maxExp: %s", player.maxExp);
-        console.log("New hp: %s", player.hp);
+    }
+
+    function incrementsMaxLevel(uint256 news_maxLevel) public onlyOwner {
+        s_maxLevel = news_maxLevel;
     }
 
     function checkIfUserHasNFT()
@@ -387,10 +307,6 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
             CharacterAttributes memory emptyStruct;
             return emptyStruct;
         }
-    }
-
-    function incrementMaxLevel(uint256 newMaxLevel) public onlyOwner {
-        maxLevel = newMaxLevel;
     }
 
     function getAllDefaultCharacters()

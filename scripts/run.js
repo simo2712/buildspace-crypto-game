@@ -1,4 +1,4 @@
-const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
+const { getNamedAccounts, deployments, network, ethers } = require("hardhat");
 
 const main = async () => {
   const gameContractFactory = await hre.ethers.getContractFactory("MyEpicGame");

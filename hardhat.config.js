@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("dotenv").config();
+require("hardhat-contract-sizer");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -21,7 +22,7 @@ const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY;
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.13",
+  solidity: "0.8.8",
   networks: {
     rinkeby: {
       url: RINKEBY_ALCHEMY_URL,
