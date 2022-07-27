@@ -56,10 +56,15 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
     uint32 private immutable i_callbackGasLimit;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
+    uint32 private constant ATTACK_IN_PROGRESS = 0;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
     mapping(uint256 => CharacterAttributes) public nftHolderAttributes;
     mapping(uint256 => BossAttributes) public bossAttributes;
+
+    // A Mapping for the check of critical attacks or dodge
+    mapping(uint256 => address) public s_attackers;
+    mapping(address => uint256) public s_results;
 
     // A mapping from an address => the NFTs tokenId
     mapping(address => uint256) public nftHolders;
@@ -75,6 +80,11 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         uint256 newCharacterHp
     );
     event BossKilled(address sender);
+    event RequestedRandomNumber(uint256 requestId, address sender);
+    event RandomNumberCreated(
+        address sender,
+        uint256 randomNumber
+    );
 
     constructor(address vrfCoordinatorV2, // contract
         uint256 entranceFee,
@@ -92,13 +102,18 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         _tokenIds.increment();
     }
 
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
     function createBosses(
         string[] memory bossName,
         string[] memory bossImageURI,
         uint[] memory bossHp,
         uint[] memory bossAttackDamage,
         uint[] memory bossExp
-    ) public {
+    ) public onlyOwner{
         uint256 lastBossIndex = defaultBosses.length;
         for (uint i = 0; i < bossName.length; i += 1) {
             defaultBosses.push(
@@ -124,7 +139,7 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         }
     }
 
-    function createCharacters(
+    function createCharacters onlyOwner(
         string[] memory characterNames,
         string[] memory characterImageURIs,
         uint[] memory characterHp,
@@ -242,6 +257,37 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         return output;
     }
 
+    function requestRandonNumber() internal {
+        uint256 requestId = i_vrfCoordinator.requestRandoWords(
+            i_gasLane,
+            i_subscriptionid,
+            REQUEST_CONFIRMATIONS,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+
+        s_attackers[requestId] = msg.sender;
+        s_results[msg.sender] = ATTACK_IN_PROGRESS;
+        emit RequestedRandomNumber(requestId, msg.sender);
+    }
+
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override {
+        uint8 value = (randomWords[0] % 100) + 1;
+        s_results[s_attackers[requestId]] = value;
+        emit RandomNumberCreated(requestId, value);
+    }
+
+    function dodgeOrCritical(uint256 id) internal returns (bool) {
+        if (id <= player.luck) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     function attackBoss(uint256 bossIndex) public {
         uint nftTokenIdOfPlayer = nftHolders[msg.sender];
         CharacterAttributes storage player = nftHolderAttributes[
@@ -269,18 +315,28 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         if (bigBoss.hp < 0) revert MyEpicGame__BossHPEqualsToZero();
 
         // Allow player to attack boss.
+        requestRandonNumber();
         if (bigBoss.hp < player.attackDamage) {
             bigBoss.hp = 0;
         } else {
-            bigBoss.hp = bigBoss.hp - player.attackDamage;
+            if (dodgeOrCritical(s_results[msg.sender])) {
+                bigBoss.hp -= player.attackDamage * 2;
+            }
+            bigBoss.hp -= player.attackDamage;
         }
 
         // Allow boss to attack player.
-        if (player.hp < bigBoss.attackDamage) {
-            player.hp = 0;
+        requestRandonNumber();
+        if (dodgeOrCritical(s_results[msg.sender])) {
+            console.log("Attack dodged!");
         } else {
-            player.hp = player.hp - bigBoss.attackDamage;
+            if (player.hp < bigBoss.attackDamage) {
+            player.hp = 0;
+            } else {
+                player.hp = player.hp - bigBoss.attackDamage;
+            }
         }
+        
 
         // Console for ease.
         emit AttackComplete(msg.sender, bigBoss.hp, player.hp);
@@ -331,11 +387,6 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
             CharacterAttributes memory emptyStruct;
             return emptyStruct;
         }
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
     }
 
     function incrementMaxLevel(uint256 newMaxLevel) public onlyOwner {
