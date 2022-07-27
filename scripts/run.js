@@ -1,7 +1,10 @@
+const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
+
 const main = async () => {
   const gameContractFactory = await hre.ethers.getContractFactory("MyEpicGame");
   const gameContract = await gameContractFactory.deploy();
   await gameContract.deployed();
+  console.log(network.config.chainId);
   console.log("Contract deployed to:", gameContract.address);
 
   let txn;

@@ -14,6 +14,7 @@ import "./libraries/Base64.sol";
 error MyEpicGame__CharacterHPEqualsToZero();
 error MyEpicGame__BossHPEqualsToZero();
 
+
 // Our contract inherits from ERC721, which is the standard NFT contract!
 contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
     /* State Variables */
