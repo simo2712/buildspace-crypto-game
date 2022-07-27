@@ -280,8 +280,8 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         emit RandomNumberCreated(requestId, value);
     }
 
-    function dodgeOrCritical(uint256 id) internal returns (bool) {
-        if (id <= player.luck) {
+    function dodgeOrCritical(uint256 id, uint256 playerParameter) internal returns (bool) {
+        if (id <= playerParameter) {
             return true;
         } else {
             return false;
@@ -319,7 +319,7 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
         if (bigBoss.hp < player.attackDamage) {
             bigBoss.hp = 0;
         } else {
-            if (dodgeOrCritical(s_results[msg.sender])) {
+            if (dodgeOrCritical(s_results[msg.sender], player.luck)) {
                 bigBoss.hp -= player.attackDamage * 2;
             }
             bigBoss.hp -= player.attackDamage;
@@ -327,7 +327,7 @@ contract MyEpicGame is ERC721, VRFConsumerBaseV2 {
 
         // Allow boss to attack player.
         requestRandonNumber();
-        if (dodgeOrCritical(s_results[msg.sender])) {
+        if (dodgeOrCritical(s_results[msg.sender], player.dexterity)) {
             console.log("Attack dodged!");
         } else {
             if (player.hp < bigBoss.attackDamage) {
