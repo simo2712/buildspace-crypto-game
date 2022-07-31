@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
@@ -47,20 +47,13 @@ contract GameEngine is VRFConsumerBaseV2 {
         emit RequestedRandomNumber(requestId, msg.sender);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords)
-        internal
-        override
-    {
-        uint value = (randomWords[0] % 100) + 1;
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        uint256 value = (randomWords[0] % 100) + 1;
         s_results[s_attackers[requestId]] = value;
         emit RandomNumberCreated(requestId, value);
     }
 
-    function dodgeOrCritical(address sender, uint256 playerParameter)
-        external
-        view
-        returns (bool)
-    {
+    function dodgeOrCritical(address sender, uint256 playerParameter) external view returns (bool) {
         if (s_results[sender] <= playerParameter) {
             return true;
         } else {
