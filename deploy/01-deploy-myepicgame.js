@@ -13,6 +13,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         log: true,
         waitConfirmation: network.config.blockConfirmations || 1,
     })
+    // const contractDeployed = await myEpicGame.deployed()
 
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying contract...")

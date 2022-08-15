@@ -14,8 +14,12 @@ const networkConfig = {
 }
 
 const developmentChains = ["hardhat", "localhost"]
+const frontEndContractsFile = "../nextjs-myepicgame/constants/contractAddresses.json"
+const frontEndAbiFile = "../nextjs-myepicgame/constants/abi.json"
 
 module.exports = {
     networkConfig,
     developmentChains,
+    frontEndContractsFile,
+    frontEndAbiFile,
 }
