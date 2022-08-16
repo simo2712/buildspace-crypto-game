@@ -279,6 +279,10 @@ contract MyEpicGame is ERC721 {
         }
     }
 
+    function getOwnerOfContract() public view returns (address) {
+        return owner;
+    }
+
     function getAllDefaultCharacters() public view returns (CharacterAttributes[] memory) {
         return defaultCharacters;
     }
