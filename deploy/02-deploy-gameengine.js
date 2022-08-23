@@ -36,7 +36,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying contract...")
-        await verify(gameEngine, arguments)
+        //await verify(gameEngine, arguments)
     }
     log("-----------------------------------------------------")
 }
