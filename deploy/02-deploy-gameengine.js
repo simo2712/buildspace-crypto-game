@@ -27,7 +27,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     const arguments = [vrfCoordinatorV2Address, gasLane, subscriptionId, callbackGasLimit]
 
-    const gameContractFactory = await deploy("GameEngine", {
+    const gameEngine = await deploy("GameEngine", {
         from: deployer,
         args: arguments,
         log: true,
@@ -36,7 +36,7 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
 
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying contract...")
-        await verify(myEpicGame, arguments)
+        await verify(gameEngine, arguments)
     }
     log("-----------------------------------------------------")
 }
