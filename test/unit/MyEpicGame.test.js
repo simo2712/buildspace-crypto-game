@@ -36,5 +36,21 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
                       "Character name should be Lukaku"
                   )
               })
+
+              it("Should create the boss", async function () {
+                  const transaction = await myEpicGame.createBosses(
+                      ["Padre Pioli"], // Boss name
+                      ["https://papavanbasten.com/wp-content/uploads/2019/12/padre-pioli.jpg"], // Boss image
+                      [20], // Boss hp
+                      [50], // Boss attack damage
+                      [12000] // Boss reward
+                  )
+                  const bossAttributes = await myEpicGame.getBossAttributes(0)
+                  assert.equal(
+                      bossAttributes.name,
+                      "Padre Pioli",
+                      "Boss name should be Padre Pioli"
+                  )
+              })
           })
       })
