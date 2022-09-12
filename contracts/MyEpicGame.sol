@@ -29,6 +29,7 @@ contract MyEpicGame is ERC721 {
         uint256 dexterity;
         uint256 luck;
     }
+
     struct BossAttributes {
         uint256 bossIndex;
         string name;
@@ -46,7 +47,7 @@ contract MyEpicGame is ERC721 {
     CharacterAttributes[] defaultCharacters;
     BossAttributes[] defaultBosses;
 
-    address owner;
+    address i_owner;
     uint256 s_maxLevel;
 
     // We create a mapping from the nft's tokenId => that NFTs attributes.
@@ -61,13 +62,13 @@ contract MyEpicGame is ERC721 {
     event BossKilled(address sender);
 
     constructor() ERC721("Heroes", "HERO") {
-        owner = msg.sender;
+        i_owner = msg.sender;
         s_maxLevel = 20;
         _tokenIds.increment();
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == i_owner);
         _;
     }
 
@@ -145,8 +146,7 @@ contract MyEpicGame is ERC721 {
         // The magical function! Assigns the tokenId to the caller's wallet address.
         _safeMint(msg.sender, newItemId);
 
-        // We map the tokenId => their character attributes. More on this in
-        // the lesson below.
+        // We map the tokenId => their character attributes.
         nftHolderAttributes[newItemId] = CharacterAttributes({
             characterIndex: _characterIndex,
             name: defaultCharacters[_characterIndex].name,
@@ -203,10 +203,10 @@ contract MyEpicGame is ERC721 {
         BossAttributes storage bigBoss = defaultBosses[bossIndex];
 
         // We need to make sure that the player has enough HP to attack.
-        if (player.hp < 0) revert MyEpicGame__CharacterHPEqualsToZero();
+        if (player.hp == 0) revert MyEpicGame__CharacterHPEqualsToZero();
 
         // We need to make sure that the boss has enough HP to attack.
-        if (bigBoss.hp < 0) revert MyEpicGame__BossHPEqualsToZero();
+        if (bigBoss.hp == 0) revert MyEpicGame__BossHPEqualsToZero();
 
         // Allow player to attack boss.
         _contract.requestRandonNumber();
@@ -265,8 +265,8 @@ contract MyEpicGame is ERC721 {
         console.log("New maxExp: %s", player.maxExp);
     }
 
-    function incrementsMaxLevel(uint256 news_maxLevel) public onlyOwner {
-        s_maxLevel = news_maxLevel;
+    function incrementsMaxLevel(uint256 new_maxLevel) public onlyOwner {
+        s_maxLevel = new_maxLevel;
     }
 
     function checkIfUserHasNFT() public view returns (CharacterAttributes memory) {
@@ -280,7 +280,7 @@ contract MyEpicGame is ERC721 {
     }
 
     function getOwnerOfContract() public view returns (address) {
-        return owner;
+        return i_owner;
     }
 
     function getAllDefaultCharacters() public view returns (CharacterAttributes[] memory) {

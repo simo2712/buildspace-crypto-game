@@ -1,14 +1,10 @@
 const { getNamedAccounts, deployments, network, ethers } = require("hardhat")
 
 const main = async () => {
-    const gameContractFactory = await hre.ethers.getContractFactory("MyEpicGame")
-    const gameContract = await gameContractFactory.deploy()
-    await gameContract.deployed()
-    console.log(network.config.chainId)
-    console.log("Contract deployed to:", gameContract.address)
+    const myEpicGame = await ethers.getContract("MyEpicGame")
 
     let txn
-    txn = await gameContract.createCharacters(
+    txn = await myEpicGame.createCharacters(
         ["Lautaro", "Lukaku", "Barella"], // Names
         [
             "https://www.fantamaster.it/wp-content/uploads/2022/05/lautaro-martinez_inter_esultanza_foto.jpg", // Images
@@ -22,7 +18,7 @@ const main = async () => {
     )
     await txn.wait()
 
-    txn = await gameContract.createCharacters(
+    txn = await myEpicGame.createCharacters(
         ["Brozovic", "Sanchez"],
         [
             "https://net-storage.tcccdn.com/storage/fcinternews.it/img_notizie/thumb3/c0/c0874e2a825c22638eceff09b96bca3d-95147-1c7efe366218a82fe280402e9d581ffc.jpeg",

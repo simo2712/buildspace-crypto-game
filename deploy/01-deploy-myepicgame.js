@@ -1,6 +1,6 @@
 const { network } = require("hardhat")
 const { networkConfig, developmentChains } = require("../helper-hardhat-config")
-const { verify } = require("../utils/verify")
+//const { verify } = require("../utils/verify")
 
 module.exports = async function ({ getNamedAccounts, deployments }) {
     const { deploy, log } = deployments
@@ -13,7 +13,6 @@ module.exports = async function ({ getNamedAccounts, deployments }) {
         log: true,
         waitConfirmation: network.config.blockConfirmations || 1,
     })
-    // const contractDeployed = await myEpicGame.deployed()
 
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying contract...")
